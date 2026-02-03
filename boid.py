@@ -9,7 +9,6 @@ from const import (
     BOID_ACC_RATE,
     BOID_SLOW_RATE,
     BOID_SEPARATION_DISTANCE,
-    AVOID_FACTOR,
     NEIGHBOUR_RANGE,
 )
 
@@ -25,6 +24,8 @@ class Boid(pygame.sprite.Sprite):
         self.velocity = pygame.Vector2(0, 0)
         self.radius = radius
         self.rotation = rotation
+
+        self.angular_velocity = 0.0
 
         self.target_rotation = rotation
 
@@ -133,7 +134,7 @@ class Boid(pygame.sprite.Sprite):
             return False
         return True
 
-    def align(self, neighbours):
+    def align(self, neighbours, dt):
         # Get avrage velocity of all neighbours
         # xv_avg = 0
         # yv_avg = 0
@@ -146,8 +147,18 @@ class Boid(pygame.sprite.Sprite):
         # yv_avg /= len(neighbours)
 
         speed_avg = 0
+        rot_avg = 0
         for neighbour in neighbours:
             speed_avg += neighbour.current_speed
+            rot_avg += neighbour.rotation
 
         speed_avg = speed_avg / len(neighbours)
         self.target_speed = speed_avg
+
+        rot_avg = rot_avg / len(neighbours)
+        diff = (rot_avg - self.rotation + 180) % 360 - 180
+        angle_difference = max(
+            -BOID_MAX_TURN_SPEED * dt, min(BOID_MAX_TURN_SPEED * dt, diff)
+        )
+
+        self.rotation += angle_difference

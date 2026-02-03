@@ -69,7 +69,7 @@ def main():
             if len(too_close) > 0:
                 boid_i.steer_away(too_close, dt)
             if len(neighbours) > 0:
-                boid_i.align(neighbours)
+                boid_i.align(neighbours, dt)
 
         for drawed in drawable:
             drawed.draw(screen)
