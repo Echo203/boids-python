@@ -1,10 +1,10 @@
 import pygame
 
-from const import BOID_SPEED, BOID_TURN_SPEED
+from const import BOID_MAX_SPEED, BOID_TURN_SPEED, BOID_ACC_RATE, BOID_SLOW_RATE
 
 
 class Boid(pygame.sprite.Sprite):
-    def __init__(self, x, y, radius, rotation):
+    def __init__(self, x, y, radius, rotation=0):
         if hasattr(self, "containers"):
             super().__init__(self.containers)
         else:
@@ -14,6 +14,8 @@ class Boid(pygame.sprite.Sprite):
         self.velocity = pygame.Vector2(0, 0)
         self.radius = radius
         self.rotation = rotation
+
+        self.current_speed = BOID_MAX_SPEED / 2
 
     def triangle(self):
         forward = pygame.Vector2(0, 1).rotate(self.rotation)
@@ -42,16 +44,23 @@ class Boid(pygame.sprite.Sprite):
             self.rotate(dt)
 
         if keys[pygame.K_w]:
-            self.move(dt)
+            self.speed_up()
 
         if keys[pygame.K_s]:
-            self.move(-dt)
+            self.slow_down()
 
     def rotate(self, dt):
         self.rotation += BOID_TURN_SPEED * dt
 
-    def move(self, dt, intensity):
+    def move(self, dt, intensity: float = 1):
         unit_vector = pygame.Vector2(0, 1)
         rotated_vector = unit_vector.rotate(self.rotation)
-        rotated_with_speed_vector = rotated_vector * (BOID_SPEED * intensity) * dt
+        rotated_with_speed_vector = rotated_vector * self.current_speed * dt
         self.position += rotated_with_speed_vector
+
+    def slow_down(self):
+        self.current_speed *= 1 - BOID_SLOW_RATE
+
+    def speed_up(self):
+        if self.current_speed < BOID_MAX_SPEED:
+            self.current_speed *= 1 + BOID_ACC_RATE

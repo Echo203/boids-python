@@ -1,8 +1,9 @@
 import pygame
+import random
 import sys
 
 from boid import Boid
-from const import SCREEN_HEIGHT, SCREEN_WIDTH, AMMOUNT_OF_BOIDS
+from const import SCREEN_HEIGHT, SCREEN_WIDTH, AMMOUNT_OF_BOIDS, BOID_RADIUS
 
 
 def main():
@@ -25,13 +26,19 @@ def main():
     Boid.containers = (boids, drawable, updatable)
 
     # Initial drawings (middle of the screen, radius of triangle = 10)
-    one_boid = Boid(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 10, 0)
+    one_boid = Boid(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, BOID_RADIUS, 0)
 
-    # boirds_array = []
-    # for i in range(AMMOUNT_OF_BOIDS):
-    #     boirds_array.append(
-    #         Boid((SCREEN_WIDTH / 2) + i * 5, (SCREEN_HEIGHT / 2) + i * 5, 10)
-    #     )
+    boids_array = []
+    for i in range(AMMOUNT_OF_BOIDS):
+        boids_array.append(
+            # Spawn boid, random position (x,y), radius from settings, random rotation
+            Boid(
+                random.randint(BOID_RADIUS, SCREEN_WIDTH - BOID_RADIUS),
+                random.randint(BOID_RADIUS, SCREEN_HEIGHT - BOID_RADIUS),
+                BOID_RADIUS,
+                random.randint(0, 359),
+            )
+        )
 
     while True:
         # Exit on close
@@ -47,8 +54,8 @@ def main():
         # Looping boids against boids to calculate avrages
         # for boids_i in boids:
 
-        # for drawed in drawable:
-        #     drawed.draw(screen)
+        for drawed in drawable:
+            drawed.draw(screen)
 
         # FPS settings
         pygame.display.flip()
