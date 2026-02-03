@@ -54,11 +54,22 @@ def main():
 
         # Looping boids against boids to calculate avrages
         for boid_i in boids:
+            too_close = []
+            neighbours = []
             for boid_j in boids:
+                # Do not take itself into account
                 if boid_i == boid_j:
                     continue
+                # Separation
                 if boid_i.is_too_close_to(boid_j):
-                    boid_i.steer_away(boid_j, dt)
+                    too_close.append(boid_j)
+                # Alignment
+                if boid_i.is_in_visible_range(boid_j):
+                    neighbours.append(boid_j)
+            if len(too_close) > 0:
+                boid_i.steer_away(too_close, dt)
+            if len(neighbours) > 0:
+                boid_i.align(neighbours)
 
         for drawed in drawable:
             drawed.draw(screen)

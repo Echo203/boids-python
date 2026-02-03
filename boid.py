@@ -1,12 +1,16 @@
 import pygame
 from math import sqrt, pow, atan2, degrees
+import random
 
 from const import (
     BOID_MAX_SPEED,
-    BOID_TURN_SPEED,
+    BOID_MIN_SPEED,
+    BOID_MAX_TURN_SPEED,
     BOID_ACC_RATE,
     BOID_SLOW_RATE,
     BOID_SEPARATION_DISTANCE,
+    AVOID_FACTOR,
+    NEIGHBOUR_RANGE,
 )
 
 
@@ -23,9 +27,9 @@ class Boid(pygame.sprite.Sprite):
         self.rotation = rotation
 
         self.target_rotation = rotation
-        self.target_velocity = 0
 
-        self.current_speed = BOID_MAX_SPEED / 2
+        self.current_speed = random.randint(BOID_MIN_SPEED, BOID_MAX_SPEED)
+        self.target_speed = self.current_speed
 
     # Drawing dynamic triangle based on position and rotation
     # So that we now where the triangle is pointing
@@ -47,6 +51,12 @@ class Boid(pygame.sprite.Sprite):
 
     def update(self, dt):
         keys = pygame.key.get_pressed()
+
+        if self.target_speed > self.current_speed:
+            self.speed_up()
+        elif self.target_speed < self.current_speed:
+            self.slow_down()
+
         self.move(dt)
 
         if keys[pygame.K_a]:
@@ -62,7 +72,7 @@ class Boid(pygame.sprite.Sprite):
             self.slow_down()
 
     def rotate(self, dt):
-        self.rotation += BOID_TURN_SPEED * dt
+        self.rotation += BOID_MAX_TURN_SPEED * dt
 
     def move(self, dt):
         unit_vector = pygame.Vector2(0, 1)
@@ -75,7 +85,8 @@ class Boid(pygame.sprite.Sprite):
             self.current_speed *= 1 + BOID_ACC_RATE
 
     def slow_down(self):
-        self.current_speed *= 1 - BOID_SLOW_RATE
+        if self.current_speed > BOID_MIN_SPEED:
+            self.current_speed *= 1 - BOID_SLOW_RATE
 
     def steer_right(self, dt):
         self.rotate(dt)
@@ -93,23 +104,50 @@ class Boid(pygame.sprite.Sprite):
             return True
         return False
 
-    def steer_away(self, other, dt):
-        dx = other.position[0] - self.position[0]
-        dy = other.position[1] - self.position[1]
+    def steer_away(self, list_of_boids, dt):
+        avg_dx = 0
+        avg_dy = 0
+        for boid in list_of_boids:
+            avg_dx = boid.position[0] - self.position[0]
+            avg_dy = boid.position[1] - self.position[1]
 
-        # math.atan2 returns radians; convert to degrees
-        # We negate dy because Pygame's Y-axis increases downwards
-        target_angle = degrees(atan2(-dy, dx))
+        # math.atan2 returns radians, convert to degrees
+        target_angle = degrees(atan2(avg_dy, avg_dx))
 
         # 2. Calculate the shortest turn (-180 to 180)
         diff = (target_angle - self.rotation + 180) % 360 - 180
 
-        # 3. Decide turn direction
-        # If diff > 0, the target is to your LEFT. To steer AWAY, turn RIGHT.
-        # If diff < 0, the target is to your RIGHT. To steer AWAY, turn LEFT.
-        if diff > 0:
-            self.steer_right(dt)  # Rotate Clockwise
-        elif diff < 0:
-            self.steer_left(dt)  # Rotate Counter-Clockwise
+        angle_difference = max(
+            -BOID_MAX_TURN_SPEED * dt, min(BOID_MAX_TURN_SPEED * dt, diff)
+        )
 
-        print(self.rotation % 360)  # Keep rotation within 0-360
+        # Add the diffrence between vectors to target rotation times ratio
+        self.rotation += angle_difference
+
+    def is_in_visible_range(self, other):
+        distance = sqrt(
+            pow(self.position[0] - other.position[0], 2)
+            + pow(self.position[1] - other.position[1], 2)
+        )
+        if distance > NEIGHBOUR_RANGE:
+            return False
+        return True
+
+    def align(self, neighbours):
+        # Get avrage velocity of all neighbours
+        # xv_avg = 0
+        # yv_avg = 0
+
+        # for neighbour in neighbours:
+        #     xv_avg += neighbour.velocity[0]
+        #     yv_avg += neighbour.velocity[1]
+
+        # xv_avg /= len(neighbours)
+        # yv_avg /= len(neighbours)
+
+        speed_avg = 0
+        for neighbour in neighbours:
+            speed_avg += neighbour.current_speed
+
+        speed_avg = speed_avg / len(neighbours)
+        self.target_speed = speed_avg
