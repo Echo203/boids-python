@@ -26,7 +26,8 @@ def main():
     Boid.containers = (boids, drawable, updatable)
 
     # Initial drawings (middle of the screen, radius of triangle = 10)
-    one_boid = Boid(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, BOID_RADIUS, 0)
+    one_boid = Boid((SCREEN_WIDTH + 300) / 2, SCREEN_HEIGHT / 2, BOID_RADIUS, 90)
+    two_boid = Boid(SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2, BOID_RADIUS, 270)
 
     boids_array = []
     for i in range(AMMOUNT_OF_BOIDS):
@@ -54,16 +55,17 @@ def main():
         # Looping boids against boids to calculate avrages
         for boid_i in boids:
             for boid_j in boids:
+                if boid_i == boid_j:
+                    continue
                 if boid_i.is_too_close_to(boid_j):
-                    boid_i.steer_left(dt)
-                    print("TOO CLOSE")
+                    boid_i.steer_away(boid_j, dt)
 
         for drawed in drawable:
             drawed.draw(screen)
 
         # FPS settings
         pygame.display.flip()
-        dt = clock.tick(144) / 1000
+        dt = clock.tick(60) / 1000
 
 
 if __name__ == "__main__":
