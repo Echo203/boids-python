@@ -1,6 +1,13 @@
 import pygame
+from math import sqrt, pow
 
-from const import BOID_MAX_SPEED, BOID_TURN_SPEED, BOID_ACC_RATE, BOID_SLOW_RATE
+from const import (
+    BOID_MAX_SPEED,
+    BOID_TURN_SPEED,
+    BOID_ACC_RATE,
+    BOID_SLOW_RATE,
+    BOID_SEPARATION_DISTANCE,
+)
 
 
 class Boid(pygame.sprite.Sprite):
@@ -14,6 +21,9 @@ class Boid(pygame.sprite.Sprite):
         self.velocity = pygame.Vector2(0, 0)
         self.radius = radius
         self.rotation = rotation
+
+        self.target_rotation = rotation
+        self.target_velocity = 0
 
         self.current_speed = BOID_MAX_SPEED / 2
 
@@ -38,10 +48,10 @@ class Boid(pygame.sprite.Sprite):
         self.move(dt)
 
         if keys[pygame.K_a]:
-            self.rotate(-dt)
+            self.steer_left(dt)
 
         if keys[pygame.K_d]:
-            self.rotate(dt)
+            self.steer_right(dt)
 
         if keys[pygame.K_w]:
             self.speed_up()
@@ -52,7 +62,7 @@ class Boid(pygame.sprite.Sprite):
     def rotate(self, dt):
         self.rotation += BOID_TURN_SPEED * dt
 
-    def move(self, dt, intensity: float = 1):
+    def move(self, dt):
         unit_vector = pygame.Vector2(0, 1)
         rotated_vector = unit_vector.rotate(self.rotation)
         rotated_with_speed_vector = rotated_vector * self.current_speed * dt
@@ -64,3 +74,18 @@ class Boid(pygame.sprite.Sprite):
     def speed_up(self):
         if self.current_speed < BOID_MAX_SPEED:
             self.current_speed *= 1 + BOID_ACC_RATE
+
+    def steer_right(self, dt):
+        self.rotate(dt)
+
+    def steer_left(self, dt):
+        self.rotate(-dt)
+
+    def is_too_close_to(self, other):
+        distance = sqrt(
+            pow(self.position[0] - other.position[0], 2)
+            + pow(self.position[1] - other.position[1], 2)
+        )
+        if distance < BOID_SEPARATION_DISTANCE:
+            return True
+        return False

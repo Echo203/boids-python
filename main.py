@@ -52,7 +52,11 @@ def main():
         updatable.update(dt)
 
         # Looping boids against boids to calculate avrages
-        # for boids_i in boids:
+        for boid_i in boids:
+            for boid_j in boids:
+                if boid_i.is_too_close_to(boid_j):
+                    boid_i.steer_left(dt)
+                    print("TOO CLOSE")
 
         for drawed in drawable:
             drawed.draw(screen)
