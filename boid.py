@@ -3,6 +3,7 @@ from math import sqrt, pow, atan2, degrees
 import random
 
 from const import (
+    ALIGNMENT_FACTOR,
     BOID_MAX_SPEED,
     BOID_MIN_SPEED,
     BOID_MAX_TURN_SPEED,
@@ -10,6 +11,8 @@ from const import (
     BOID_SLOW_RATE,
     BOID_SEPARATION_DISTANCE,
     NEIGHBOUR_RANGE,
+    SCREEN_WIDTH,
+    SCREEN_HEIGHT,
 )
 
 
@@ -161,4 +164,52 @@ class Boid(pygame.sprite.Sprite):
             -BOID_MAX_TURN_SPEED * dt, min(BOID_MAX_TURN_SPEED * dt, diff)
         )
 
+        self.rotation += angle_difference
+
+    def cohesion(self, neighbours, dt):
+        x_avg = 0
+        y_avg = 0
+        for neighbour in neighbours:
+            x_avg += neighbour.position[0]
+            y_avg += neighbour.position[1]
+
+        x_avg = x_avg / len(neighbours)
+        y_avg = y_avg / len(neighbours)
+
+        target_angle = degrees(atan2(y_avg, x_avg))
+
+        diff = (target_angle - self.rotation + 180) % 360 - 180
+
+        angle_difference = max(
+            -BOID_MAX_TURN_SPEED * dt, min(BOID_MAX_TURN_SPEED * dt, diff)
+        )
+
+        self.rotation += angle_difference
+
+    def check_margins(self, margin, dt):
+        steer_direction = pygame.Vector2(0, 0)
+
+        if self.position.x < margin:
+            steer_direction.x += 1  # Push Right
+        elif self.position.x > SCREEN_WIDTH - margin:
+            steer_direction.x -= 1  # Push Left
+
+        if self.position.y < margin:
+            steer_direction.y += 1  # Push Down
+        elif self.position.y > SCREEN_HEIGHT - margin:
+            steer_direction.y -= 1  # Push Up
+
+        # 2. If we aren't near a margin, do nothing
+        if steer_direction.length() == 0:
+            return
+
+        # 3. Calculate the target angle based on your move() vector (0, 1)
+        # This finds the angle between 'Down' and our desired push direction
+        target_angle = pygame.Vector2(0, 1).angle_to(steer_direction)
+
+        diff = (target_angle - self.rotation + 180) % 360 - 180
+
+        angle_difference = max(
+            -BOID_MAX_TURN_SPEED * dt, min(BOID_MAX_TURN_SPEED * dt, diff)
+        )
         self.rotation += angle_difference

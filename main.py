@@ -3,7 +3,13 @@ import random
 import sys
 
 from boid import Boid
-from const import SCREEN_HEIGHT, SCREEN_WIDTH, AMMOUNT_OF_BOIDS, BOID_RADIUS
+from const import (
+    SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+    AMMOUNT_OF_BOIDS,
+    BOID_RADIUS,
+    SCREEN_MARGIN,
+)
 
 
 def main():
@@ -28,14 +34,21 @@ def main():
     # Initial drawings (middle of the screen, radius of triangle = 10)
     one_boid = Boid((SCREEN_WIDTH + 300) / 2, SCREEN_HEIGHT / 2, BOID_RADIUS, 90)
     two_boid = Boid(SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2, BOID_RADIUS, 270)
+    ttt = Boid(100, 100, BOID_RADIUS, 0)
 
     boids_array = []
     for i in range(AMMOUNT_OF_BOIDS):
         boids_array.append(
             # Spawn boid, random position (x,y), radius from settings, random rotation
             Boid(
-                random.randint(BOID_RADIUS, SCREEN_WIDTH - BOID_RADIUS),
-                random.randint(BOID_RADIUS, SCREEN_HEIGHT - BOID_RADIUS),
+                random.randint(
+                    SCREEN_MARGIN + BOID_RADIUS,
+                    SCREEN_WIDTH - SCREEN_MARGIN - BOID_RADIUS,
+                ),
+                random.randint(
+                    SCREEN_MARGIN + BOID_RADIUS,
+                    SCREEN_HEIGHT - SCREEN_MARGIN - BOID_RADIUS,
+                ),
                 BOID_RADIUS,
                 random.randint(0, 359),
             )
@@ -70,6 +83,8 @@ def main():
                 boid_i.steer_away(too_close, dt)
             if len(neighbours) > 0:
                 boid_i.align(neighbours, dt)
+                boid_i.cohesion(neighbours, dt)
+            boid_i.check_margins(SCREEN_MARGIN, dt)
 
         for drawed in drawable:
             drawed.draw(screen)
