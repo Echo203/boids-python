@@ -3,6 +3,9 @@ from math import sqrt, pow, atan2, degrees
 import random
 
 from const import (
+    ALIGNMENT_FACTOR,
+    SEPARATION_FACTOR,
+    COHESION_FACTOR,
     BOID_ANGULAR_VELOCITY,
     BOID_ANGULAR_DUMP,
     BOID_STEER_FORCE,
@@ -68,6 +71,17 @@ class Boid(pygame.sprite.Sprite):
         elif self.target_speed < self.current_speed:
             self.slow_down()
 
+        steering = (
+            self.separation_vector * SEPARATION_FACTOR
+            + self.alignment_vector * ALIGNMENT_FACTOR
+            + self.cohesion_vector * COHESION_FACTOR
+        )
+
+        desired_angle = steering.as_polar()[1]
+        if abs(desired_angle) < 1.0:
+            desired_angle = 0
+        self.turn_towards_angle(desired_angle, dt)
+
         self.move(dt)
 
     def move(self, dt):
@@ -112,7 +126,8 @@ class Boid(pygame.sprite.Sprite):
         # 2. Calculate the shortest turn (-180 to 180)
         diff = calc_angle_diff(target_angle, self.rotation)
 
-        self.turn_towards_angle(diff, dt)
+        # self.turn_towards_angle(diff, dt)
+        self.separation_vector = pygame.Vector2(avg_dx, avg_dy)
 
     def is_in_visible_range(self, other):
         distance = sqrt(
@@ -136,17 +151,22 @@ class Boid(pygame.sprite.Sprite):
         # yv_avg /= len(neighbours)
 
         speed_avg = 0
-        rot_avg = 0
+        alignment_vector_avg = pygame.Vector2(0, 0)
         for neighbour in neighbours:
             speed_avg += neighbour.current_speed
-            rot_avg += neighbour.rotation
+            neighbour_direction = pygame.Vector2(0, 1).rotate(neighbour.rotation)
+            alignment_vector_avg += neighbour_direction
 
         speed_avg = speed_avg / len(neighbours)
         self.target_speed = speed_avg
 
-        rot_avg = rot_avg / len(neighbours)
-        diff = calc_angle_diff(rot_avg, self.rotation)
-        self.turn_towards_angle(diff, dt)
+        if alignment_vector_avg.length_squared() > 0:
+            alignment_vector_avg.normalize()
+
+        alignment_vector_avg = alignment_vector_avg / len(neighbours)
+
+        self.alignment_vector = alignment_vector_avg
+        # self.turn_towards_angle(diff, dt)
 
     def cohesion(self, neighbours, dt):
         x_avg = 0
@@ -162,7 +182,8 @@ class Boid(pygame.sprite.Sprite):
 
         diff = calc_angle_diff(target_angle, self.rotation)
 
-        self.turn_towards_angle(diff, dt)
+        self.cohesion_vector = pygame.Vector2(x_avg, y_avg)
+        # self.turn_towards_angle(diff, dt)
 
     def check_margins(self, margin, dt):
         steer_direction = pygame.Vector2(0, 0)
