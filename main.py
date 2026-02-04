@@ -32,9 +32,9 @@ def main():
     Boid.containers = (boids, drawable, updatable)
 
     # Initial drawings (middle of the screen, radius of triangle = 10)
-    one_boid = Boid((SCREEN_WIDTH + 300) / 2, SCREEN_HEIGHT / 2, BOID_RADIUS, 90)
+    one_boid = Boid((SCREEN_WIDTH + 300) / 2, (SCREEN_HEIGHT / 2), BOID_RADIUS, 90)
     two_boid = Boid(SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2, BOID_RADIUS, 270)
-    ttt = Boid(100, 100, BOID_RADIUS, 0)
+    # ttt = Boid(100, 100, BOID_RADIUS, 0)
 
     boids_array = []
     for i in range(AMMOUNT_OF_BOIDS):
@@ -67,6 +67,8 @@ def main():
 
         # Looping boids against boids to calculate avrages
         for boid_i in boids:
+            do_we_separate = False
+            do_we_align_and_cohes = False
             too_close = []
             neighbours = []
             for boid_j in boids:
@@ -79,12 +81,18 @@ def main():
                 # Alignment
                 if boid_i.is_in_visible_range(boid_j):
                     neighbours.append(boid_j)
+            # boid_i.steer_away(too_close, dt)
             if len(too_close) > 0:
                 boid_i.steer_away(too_close, dt)
+                do_we_separate = True
+
             if len(neighbours) > 0:
                 boid_i.align(neighbours, dt)
                 boid_i.cohesion(neighbours, dt)
-            # boid_i.check_margins(SCREEN_MARGIN, dt)
+                do_we_align_and_cohes = True
+
+            boid_i.switch_separation_to(do_we_separate)
+            boid_i.switch_align_and_cohes_to(do_we_align_and_cohes)
 
         for drawed in drawable:
             drawed.draw(screen)

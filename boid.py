@@ -12,6 +12,7 @@ from const import (
     BOID_MAX_SPEED,
     BOID_MIN_SPEED,
     BOID_MAX_TURN_SPEED,
+    BOID_FOV,
     BOID_ACC_RATE,
     BOID_SLOW_RATE,
     BOID_SEPARATION_DISTANCE,
@@ -20,7 +21,7 @@ from const import (
     SCREEN_HEIGHT,
 )
 
-from helpers import calc_angle_diff
+from helpers import calc_angle_diff, calc_distance_two_boids, normalize
 
 
 class Boid(pygame.sprite.Sprite):
@@ -40,6 +41,8 @@ class Boid(pygame.sprite.Sprite):
 
         self.current_speed = random.randint(BOID_MIN_SPEED, BOID_MAX_SPEED)
         self.target_speed = self.current_speed
+
+        self.state = {"separation": False, "alignment": False, "cohesion": False}
 
         self.separation_vector = pygame.Vector2(0, 0)
         self.alignment_vector = pygame.Vector2(0, 0)
@@ -71,17 +74,36 @@ class Boid(pygame.sprite.Sprite):
         elif self.target_speed < self.current_speed:
             self.slow_down()
 
+        if not (self.state["separation"]):
+            self.separation_vector = pygame.Vector2(0, 0)
+        if not (self.state["alignment"]):
+            self.alignment_vector = pygame.Vector2(0, 0)
+            self.cohesion_vector = pygame.Vector2(0, 0)
+
         steering = (
-            self.separation_vector * SEPARATION_FACTOR
-            + self.alignment_vector * ALIGNMENT_FACTOR
-            + self.cohesion_vector * COHESION_FACTOR
+            normalize(self.separation_vector) * SEPARATION_FACTOR
+            + normalize(self.alignment_vector) * ALIGNMENT_FACTOR
+            + normalize(self.cohesion_vector) * COHESION_FACTOR
         )
+        # if steering[0] != 0 and steering[1] != 0:
+        #     print(f"steering: {steering}")
+        # if self.state["separation"] or self.state["alignment"]:
+        #     print(
+        #         f"Separating: {self.state['separation']}\nAlign and cohes: {self.state['alignment']}"
+        #     )
+        #     print(f"desired_angle: {steering.as_polar()[1]}")
+        #     print(f"self.rotation: {self.rotation}")
+        #     print(f"diff: {calc_angle_diff(self.rotation, steering.as_polar()[1])}")
 
-        desired_angle = steering.as_polar()[1]
-        if abs(desired_angle) < 1.0:
-            desired_angle = 0
-        self.turn_towards_angle(desired_angle, dt)
+        if steering.length_squared() > 0.0001:
+            desired_angle = steering.as_polar()[1]
 
+            diff = calc_angle_diff(self.rotation, desired_angle)
+
+            if abs(diff) > 1.0:
+                # print(f"steering.as_polar(): {steering.as_polar()}")
+                # print(f"self.angular_velocity: {self.angular_velocity}")
+                self.turn_towards_angle(desired_angle, dt)
         self.move(dt)
 
     def move(self, dt):
@@ -101,40 +123,63 @@ class Boid(pygame.sprite.Sprite):
     def turn_towards_angle(self, angle, dt):
         self.angular_velocity += angle * BOID_STEER_FORCE * dt
         self.angular_velocity *= BOID_ANGULAR_DUMP
+        # print(
+        #     f"Current rotation: {self.rotation}\nSteering towards: {angle}\nUpdated Rotation: {self.rotation + self.angular_velocity * dt}"
+        # )
         self.rotation += self.angular_velocity * dt
 
     # Euclidian distance for self and boid to check with
     def is_too_close_to(self, other):
+        # Check distance
         distance = sqrt(
             pow(self.position[0] - other.position[0], 2)
             + pow(self.position[1] - other.position[1], 2)
         )
-        if distance < BOID_SEPARATION_DISTANCE:
+
+        # Check if in front
+        forward_vector = pygame.Vector2(0, 1).rotate(self.rotation)
+        to_other = other.position - self.position
+        dist = to_other.length()
+        if dist > 0:
+            to_other_norm = to_other / dist
+        # This takes a vector and creates relative position according to rotation
+        # From 1.0 <- Exacly in front
+        # To -1.0 <- Exacly behind
+        how_ahead = forward_vector.dot(to_other_norm)
+
+        # print(f"how_ahead: {how_ahead}")
+        if distance < BOID_SEPARATION_DISTANCE and how_ahead > BOID_FOV:
             return True
         return False
 
     def steer_away(self, list_of_boids, dt):
-        avg_dx = 0
-        avg_dy = 0
+        smallest_distance = BOID_SEPARATION_DISTANCE
+        closes_boid = list_of_boids[0]
+
         for boid in list_of_boids:
-            avg_dx = boid.position[0] - self.position[0]
-            avg_dy = boid.position[1] - self.position[1]
-
-        # math.atan2 returns radians, convert to degrees
-        target_angle = degrees(atan2(avg_dy, avg_dx))
-
-        # 2. Calculate the shortest turn (-180 to 180)
-        diff = calc_angle_diff(target_angle, self.rotation)
-
-        # self.turn_towards_angle(diff, dt)
-        self.separation_vector = pygame.Vector2(avg_dx, avg_dy)
+            dist = calc_distance_two_boids(self, boid)
+            if dist < smallest_distance:
+                smallest_distance = dist
+                closes_boid = boid
+            # print(dist)
+        self.separation_vector = pygame.Vector2(
+            closes_boid.position[0], closes_boid.position[1]
+        )
 
     def is_in_visible_range(self, other):
         distance = sqrt(
             pow(self.position[0] - other.position[0], 2)
             + pow(self.position[1] - other.position[1], 2)
         )
-        if distance > NEIGHBOUR_RANGE:
+        forward_vector = pygame.Vector2(0, 1).rotate(self.rotation)
+        to_other = other.position - self.position
+        dist = to_other.length()
+        if dist > 0:
+            to_other_norm = to_other / dist
+
+        how_ahead = forward_vector.dot(to_other_norm)
+
+        if distance > NEIGHBOUR_RANGE and how_ahead > BOID_FOV:
             return False
         return True
 
@@ -185,30 +230,9 @@ class Boid(pygame.sprite.Sprite):
         self.cohesion_vector = pygame.Vector2(x_avg, y_avg)
         # self.turn_towards_angle(diff, dt)
 
-    def check_margins(self, margin, dt):
-        steer_direction = pygame.Vector2(0, 0)
+    def switch_separation_to(self, is_separating):
+        self.state["separation"] = is_separating
 
-        if self.position.x < margin:
-            steer_direction.x += 1  # Push Right
-        elif self.position.x > SCREEN_WIDTH - margin:
-            steer_direction.x -= 1  # Push Left
-
-        if self.position.y < margin:
-            steer_direction.y += 1  # Push Down
-        elif self.position.y > SCREEN_HEIGHT - margin:
-            steer_direction.y -= 1  # Push Up
-
-        # 2. If we aren't near a margin, do nothing
-        if steer_direction.length() == 0:
-            return
-
-        # 3. Calculate the target angle based on your move() vector (0, 1)
-        # This finds the angle between 'Down' and our desired push direction
-        target_angle = pygame.Vector2(0, 1).angle_to(steer_direction)
-
-        diff = calc_angle_diff(target_angle, self.rotation)
-
-        angle_difference = max(
-            -BOID_MAX_TURN_SPEED * dt, min(BOID_MAX_TURN_SPEED * dt, diff)
-        )
-        self.rotation += angle_difference
+    def switch_align_and_cohes_to(self, is_aligning):
+        self.state["alignment"] = is_aligning
+        self.state["cohesion"] = is_aligning
