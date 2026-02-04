@@ -28,3 +28,13 @@ Add one new variable to your boid:
 ```
 self.angular_velocity = 0.0  # degrees per second
 ```
+
+Quick tuning tips
+
+- If boids “snap” → lower STEER_STRENGTH
+
+- If boids “wobble” → increase ANGULAR_DAMPING
+
+- If boids feel sluggish → raise STEER_STRENGTH
+
+- If they spin → clamp angular velocity

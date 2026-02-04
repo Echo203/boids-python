@@ -84,7 +84,7 @@ def main():
             if len(neighbours) > 0:
                 boid_i.align(neighbours, dt)
                 boid_i.cohesion(neighbours, dt)
-            boid_i.check_margins(SCREEN_MARGIN, dt)
+            # boid_i.check_margins(SCREEN_MARGIN, dt)
 
         for drawed in drawable:
             drawed.draw(screen)

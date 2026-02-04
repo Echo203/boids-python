@@ -3,7 +3,9 @@ from math import sqrt, pow, atan2, degrees
 import random
 
 from const import (
-    ALIGNMENT_FACTOR,
+    BOID_ANGULAR_VELOCITY,
+    BOID_ANGULAR_DUMP,
+    BOID_STEER_FORCE,
     BOID_MAX_SPEED,
     BOID_MIN_SPEED,
     BOID_MAX_TURN_SPEED,
@@ -15,6 +17,8 @@ from const import (
     SCREEN_HEIGHT,
 )
 
+from helpers import calc_angle_diff
+
 
 class Boid(pygame.sprite.Sprite):
     def __init__(self, x, y, radius, rotation=0):
@@ -24,16 +28,19 @@ class Boid(pygame.sprite.Sprite):
             super().__init__()
 
         self.position = pygame.Vector2(x, y)
-        self.velocity = pygame.Vector2(0, 0)
         self.radius = radius
         self.rotation = rotation
 
-        self.angular_velocity = 0.0
+        self.angular_velocity = BOID_ANGULAR_VELOCITY
 
         self.target_rotation = rotation
 
         self.current_speed = random.randint(BOID_MIN_SPEED, BOID_MAX_SPEED)
         self.target_speed = self.current_speed
+
+        self.separation_vector = pygame.Vector2(0, 0)
+        self.alignment_vector = pygame.Vector2(0, 0)
+        self.cohesion_vector = pygame.Vector2(0, 0)
 
     # Drawing dynamic triangle based on position and rotation
     # So that we now where the triangle is pointing
@@ -54,7 +61,7 @@ class Boid(pygame.sprite.Sprite):
         )
 
     def update(self, dt):
-        keys = pygame.key.get_pressed()
+        # keys = pygame.key.get_pressed()
 
         if self.target_speed > self.current_speed:
             self.speed_up()
@@ -62,21 +69,6 @@ class Boid(pygame.sprite.Sprite):
             self.slow_down()
 
         self.move(dt)
-
-        if keys[pygame.K_a]:
-            self.steer_left(dt)
-
-        if keys[pygame.K_d]:
-            self.steer_right(dt)
-
-        if keys[pygame.K_w]:
-            self.speed_up()
-
-        if keys[pygame.K_s]:
-            self.slow_down()
-
-    def rotate(self, dt):
-        self.rotation += BOID_MAX_TURN_SPEED * dt
 
     def move(self, dt):
         unit_vector = pygame.Vector2(0, 1)
@@ -92,11 +84,10 @@ class Boid(pygame.sprite.Sprite):
         if self.current_speed > BOID_MIN_SPEED:
             self.current_speed *= 1 - BOID_SLOW_RATE
 
-    def steer_right(self, dt):
-        self.rotate(dt)
-
-    def steer_left(self, dt):
-        self.rotate(-dt)
+    def turn_towards_angle(self, angle, dt):
+        self.angular_velocity += angle * BOID_STEER_FORCE * dt
+        self.angular_velocity *= BOID_ANGULAR_DUMP
+        self.rotation += self.angular_velocity * dt
 
     # Euclidian distance for self and boid to check with
     def is_too_close_to(self, other):
@@ -119,14 +110,9 @@ class Boid(pygame.sprite.Sprite):
         target_angle = degrees(atan2(avg_dy, avg_dx))
 
         # 2. Calculate the shortest turn (-180 to 180)
-        diff = (target_angle - self.rotation + 180) % 360 - 180
+        diff = calc_angle_diff(target_angle, self.rotation)
 
-        angle_difference = max(
-            -BOID_MAX_TURN_SPEED * dt, min(BOID_MAX_TURN_SPEED * dt, diff)
-        )
-
-        # Add the diffrence between vectors to target rotation times ratio
-        self.rotation += angle_difference
+        self.turn_towards_angle(diff, dt)
 
     def is_in_visible_range(self, other):
         distance = sqrt(
@@ -159,12 +145,8 @@ class Boid(pygame.sprite.Sprite):
         self.target_speed = speed_avg
 
         rot_avg = rot_avg / len(neighbours)
-        diff = (rot_avg - self.rotation + 180) % 360 - 180
-        angle_difference = max(
-            -BOID_MAX_TURN_SPEED * dt, min(BOID_MAX_TURN_SPEED * dt, diff)
-        )
-
-        self.rotation += angle_difference
+        diff = calc_angle_diff(rot_avg, self.rotation)
+        self.turn_towards_angle(diff, dt)
 
     def cohesion(self, neighbours, dt):
         x_avg = 0
@@ -178,13 +160,9 @@ class Boid(pygame.sprite.Sprite):
 
         target_angle = degrees(atan2(y_avg, x_avg))
 
-        diff = (target_angle - self.rotation + 180) % 360 - 180
+        diff = calc_angle_diff(target_angle, self.rotation)
 
-        angle_difference = max(
-            -BOID_MAX_TURN_SPEED * dt, min(BOID_MAX_TURN_SPEED * dt, diff)
-        )
-
-        self.rotation += angle_difference
+        self.turn_towards_angle(diff, dt)
 
     def check_margins(self, margin, dt):
         steer_direction = pygame.Vector2(0, 0)
@@ -207,7 +185,7 @@ class Boid(pygame.sprite.Sprite):
         # This finds the angle between 'Down' and our desired push direction
         target_angle = pygame.Vector2(0, 1).angle_to(steer_direction)
 
-        diff = (target_angle - self.rotation + 180) % 360 - 180
+        diff = calc_angle_diff(target_angle, self.rotation)
 
         angle_difference = max(
             -BOID_MAX_TURN_SPEED * dt, min(BOID_MAX_TURN_SPEED * dt, diff)
