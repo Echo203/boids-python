@@ -5,8 +5,7 @@
 - Pygame 2.6.1
 - VcXsrv (if on WSL)
 
-## Config
-In const.py:
+## Configuration (in const.py)
 
 ### Window size
 ```python
