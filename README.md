@@ -1,55 +1,55 @@
-- Clean code
-- collect all inputs, then update movement
-- we can use ratios if we separate it
+# Boid implementation with Pygame and Python
 
-TODO:
-- fix speed:
-    - either target to current
-    - or current in q to be updated
+## Requirements:
+- Python 3.13 and up
+- Pygame 2.6.1
+- VcXsrv (if on WSL)
 
-The key idea: rotation has momentum
+## Config
+In const.py:
 
-Instead of:
+### Window size
 ```python
-self.rotation = desired_angle
+SCREEN_WIDTH = 1600
+SCREEN_HEIGHT = 900
+SCREEN_MARGIN = 100
 ```
 
-you do:
-```
-self.angular_velocity += steering_force
-self.rotation += self.angular_velocity * dt
-```
-
-This is the missing layer.
-
-Minimal natural steering model (recommended)
-
-Add one new variable to your boid:
-```
-self.angular_velocity = 0.0  # degrees per second
+### Ammount of boids
+```python
+AMMOUNT_OF_BOIDS = 50
 ```
 
-Quick tuning tips
-
-- If boids “snap” → lower STEER_STRENGTH
-
-- If boids “wobble” → increase ANGULAR_DAMPING
-
-- If boids feel sluggish → raise STEER_STRENGTH
-
-- If they spin → clamp angular velocity
-
+### Algorithm factors
+```python
+ALIGNMENT_FACTOR = 1.0
+COHESION_FACTOR = 0.8
+SEPARATION_FACTOR = 1.5
 ```
-   # math.atan2 returns radians, convert to degrees
-        target_angle = degrees(atan2(avg_dy, avg_dx))
 
-        # 2. Calculate the shortest turn (-180 to 180)
-        diff = calc_angle_diff(target_angle, self.rotation)
+### Vision settings
+```python
+BOID_FOV = 0.2
+```
+### Range for flock and for avoiding
+```python
+NEIGHBOUR_RANGE = 50
+BOID_SEPARATION_DISTANCE = 20
+```
 
-def steer_away(self, list_of_boids, dt):
-        avg_dx = 0
-        avg_dy = 0
-        for boid in list_of_boids:
-            avg_dx = boid.position[0] - self.position[0]
-            avg_dy = boid.position[1] - self.position[1]
+### Turning settings
+```python
+BOID_ANGULAR_VELOCITY = 0
+BOID_ANGULAR_DUMP = 0.8
+BOID_STEER_FORCE = 50
+```
+
+### Boid properities
+```python
+BOID_ACC_RATE = 0.05
+BOID_SLOW_RATE = 0.05
+BOID_MAX_SPEED = 250
+BOID_MIN_SPEED = 100
+BOID_MAX_TURN_SPEED = 300
+BOID_RADIUS = 10
 ```
